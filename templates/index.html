@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planificateur de Voyage VÉ</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+<div class="container">
+
+    <!-- ================= HEADER ================= -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span class="icon">⚡</span>
+                <h1>Planificateur de Voyage en Véhicule Électrique</h1>
+            </div>
+            <p class="subtitle">
+                Calculez votre itinéraire avec les arrêts de recharge optimisés
+            </p>
+        </div>
+    </header>
+
+    <!-- ================= MAIN ================= -->
+    <main class="main-layout">
+
+        <!-- ===== LIGNE 1 : FORMULAIRE + CARTE ===== -->
+        <section class="top-grid">
+
+            <!-- FORMULAIRE -->
+            <section class="card">
+                <h2 class="card-title">🗺️ Planifiez votre trajet</h2>
+
+                <form id="tripForm">
+
+                    <div class="form-group">
+                        <label for="vehicle">Sélectionnez votre véhicule</label>
+                        <select id="vehicle" name="vehicle" required>
+                            <option value="">Chargement des véhicules...</option>
+                        </select>
+
+                        <div id="vehicleInfo" class="vehicle-info" style="display:none;">
+                            <div class="info-badge">
+                                <span class="badge-label">Autonomie</span>
+                                <span class="badge-value" id="vehicleRange">-</span>
+                            </div>
+                            <div class="info-badge">
+                                <span class="badge-label">Batterie</span>
+                                <span class="badge-value" id="vehicleBattery">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="start_city">Ville de départ</label>
+                        <input type="text" id="start_city" name="start_city" required>
+                        <div class="autocomplete-list" id="startSuggestions"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="end_city">Ville d'arrivée</label>
+                        <input type="text" id="end_city" name="end_city" required>
+                        <div class="autocomplete-list" id="endSuggestions"></div>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="planBtn">
+                        🚗 Calculer l'itinéraire
+                    </button>
+                </form>
+
+                <div id="loading" class="loading" style="display:none;">
+                    <div class="spinner"></div>
+                    <p>Calcul en cours...</p>
+                </div>
+            </section>
+
+            <!-- CARTE -->
+            <section class="card map-card">
+                <h2 class="card-title">🗺️ Carte interactive</h2>
+                <div id="map" class="map-container-large"></div>
+            </section>
+
+        </section>
+
+        <!-- ===== LIGNE 2 : RÉSULTATS ===== -->
+        <section id="results" class="bottom-grid" style="display:none;">
+
+            <!-- RÉSUMÉ -->
+            <section class="card">
+                <h2 class="card-title">📊 Résumé du trajet</h2>
+
+                <div class="trip-summary">
+
+                    <div class="summary-item">
+                        <div class="summary-icon">🛣️</div>
+                        <div>
+                            <div class="summary-label">Distance totale</div>
+                            <div class="summary-value" id="totalDistance">-</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-item">
+                        <div class="summary-icon">⚡</div>
+                        <div>
+                            <div class="summary-label">Arrêts</div>
+                            <div class="summary-value" id="numStops">-</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-item">
+                        <div class="summary-icon">⏱️</div>
+                        <div>
+                            <div class="summary-label">Conduite</div>
+                            <div class="summary-value" id="drivingTime">-</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-item">
+                        <div class="summary-icon">🔌</div>
+                        <div>
+                            <div class="summary-label">Recharge</div>
+                            <div class="summary-value" id="chargingTime">-</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-item highlight">
+                        <div class="summary-icon">🕐</div>
+                        <div>
+                            <div class="summary-label">Temps total</div>
+                            <div class="summary-value" id="totalTime">-</div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- ARRÊTS -->
+            <section class="card" id="stopsCard" style="display:none;">
+                <h2 class="card-title">🔋 Arrêts de recharge</h2>
+                <div id="stopsList" class="stops-list"></div>
+            </section>
+
+        </section>
+
+    </main>
+
+</div>
+
+    <script>
+        let vehicles = [];
+
+        // Charger les véhicules au démarrage
+        async function loadVehicles() {
+            try {
+                const response = await fetch('/api/vehicles');
+                const data = await response.json();
+                
+                if (data.success) {
+                    vehicles = data.vehicles;
+                    const select = document.getElementById('vehicle');
+                    select.innerHTML = '<option value="">-- Choisissez un véhicule --</option>';
+                    
+                    vehicles.forEach(vehicle => {
+                        const option = document.createElement('option');
+                        option.value = vehicle.id;
+                        option.textContent = `${vehicle.make} ${vehicle.model} ${vehicle.version} (${vehicle.range} km)`;
+                        option.dataset.range = vehicle.range;
+                        option.dataset.battery = vehicle.battery;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erreur chargement véhicules:', error);
+                document.getElementById('vehicle').innerHTML = '<option value="">Erreur de chargement</option>';
+            }
+        }
+
+        // Afficher les infos du véhicule sélectionné
+        document.getElementById('vehicle').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const vehicleInfo = document.getElementById('vehicleInfo');
+            
+            if (this.value) {
+                document.getElementById('vehicleRange').textContent = selectedOption.dataset.range + ' km';
+                document.getElementById('vehicleBattery').textContent = selectedOption.dataset.battery + ' kWh';
+                vehicleInfo.style.display = 'flex';
+            } else {
+                vehicleInfo.style.display = 'none';
+            }
+        });
+
+        // Soumettre le formulaire
+        document.getElementById('tripForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const planBtn = document.getElementById('planBtn');
+            
+            // Afficher le loading
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            planBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/plan', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    alert('Erreur: ' + (data.error || 'Impossible de calculer l\'itinéraire'));
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                alert('Une erreur est survenue lors du calcul de l\'itinéraire');
+            } finally {
+                loading.style.display = 'none';
+                planBtn.disabled = false;
+            }
+        });
+
+        async function setupAutocomplete(inputId, listId) {
+            const input = document.getElementById(inputId);
+            const list = document.getElementById(listId);
+
+            let controller = null; // 🔒 annulation requêtes précédentes
+
+            input.addEventListener("input", async () => {
+                const q = input.value.trim();
+                list.innerHTML = "";
+
+                if (q.length < 3) return;
+
+                // 🔥 annuler la requête précédente
+                if (controller) controller.abort();
+                controller = new AbortController();
+
+                try {
+                    const res = await fetch(
+                        `/api/geocode?q=${encodeURIComponent(q)}`,
+                        { signal: controller.signal }
+                    );
+                    const data = await res.json();
+
+                    // 🔒 LIMITE STRICTE À 5
+                    data.slice(0, 5).forEach(item => {
+                        const div = document.createElement("div");
+                        div.className = "autocomplete-item";
+                        div.textContent = item.label;
+
+                        div.onclick = () => {
+                            input.value = item.label;
+                            list.innerHTML = "";
+                        };
+
+                        list.appendChild(div);
+                    });
+
+                } catch (err) {
+                    if (err.name !== "AbortError") {
+                        console.error(err);
+                    }
+                }
+            });
+
+            document.addEventListener("click", e => {
+                if (!input.contains(e.target) && !list.contains(e.target)) {
+                    list.innerHTML = "";
+                }
+            });
+        }
+
+        setupAutocomplete("start_city", "startSuggestions");
+        setupAutocomplete("end_city", "endSuggestions");
+
+
+        function displayResults(data) {
+            const results = document.getElementById('results');
+            const trip = data.trip;
+            
+            // Afficher les résultats
+            document.getElementById('totalDistance').textContent = trip.total_distance + ' km';
+            document.getElementById('numStops').textContent = trip.num_stops;
+            document.getElementById('drivingTime').textContent = formatHoursToHMin(trip.driving_time);
+            document.getElementById('chargingTime').textContent = formatHoursToHMin(trip.charging_time);
+            document.getElementById('totalTime').textContent = formatHoursToHMin(trip.total_time);
+
+            
+            // Afficher les arrêts de recharge
+            const stopsCard = document.getElementById('stopsCard');
+            const stopsList = document.getElementById('stopsList');
+            
+            if (trip.stops.length > 0) {
+                stopsCard.style.display = 'block';
+                stopsList.innerHTML = '';
+                
+                trip.stops.forEach(stop => {
+                    const stopDiv = document.createElement('div');
+                    stopDiv.className = 'stop-item';
+                    stopDiv.innerHTML = `
+                        <div class="stop-number">${stop.stop_number}</div>
+                        <div class="stop-info">
+                            <div class="stop-name">${stop.name}</div>
+                            <div class="stop-address">${stop.address}</div>
+                            <div class="stop-details">
+                                <span>⚡ ${stop.power}</span>
+                                <span>⏱️ ${stop.charging_time} min</span>
+                            </div>
+                        </div>
+                    `;
+                    stopsList.appendChild(stopDiv);
+                });
+            } else {
+                stopsCard.style.display = 'none';
+            }
+            
+            // Afficher la carte
+            document.getElementById('map').innerHTML = data.map;
+            
+            // Afficher la section résultats
+            results.style.display = 'block';
+            
+            // Scroll vers les résultats
+            results.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Charger les véhicules au chargement de la page
+        loadVehicles();
+
+        function formatHoursToHMin(hoursFloat) {
+            const totalMinutes = Math.round(hoursFloat * 60);
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+
+            if (hours === 0) {
+                return `${minutes} min`;
+            }
+
+            if (minutes === 0) {
+                return `${hours} h`;
+            }
+
+            return `${hours}h ${minutes}min`;
+        }
+
+    </script>
+</body>
+</html>
