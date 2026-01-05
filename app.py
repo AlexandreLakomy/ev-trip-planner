@@ -9,6 +9,10 @@ from geopy.distance import geodesic
 import os
 from dotenv import load_dotenv
 from soap_service import soap_wsgi_app
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from werkzeug.serving import run_simple
+
+
 
 
 load_dotenv()
@@ -561,4 +565,15 @@ def plan_trip():
 if __name__ == "__main__":
     print("🚗 Serveur lancé sur http://0.0.0.0:5000")
     print(f"🔋 Marge de sécurité batterie: {BATTERY_SAFETY_MARGIN * 100}%")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+
+    application = DispatcherMiddleware(app, {
+        "/soap": soap_wsgi_app
+    })
+
+    run_simple(
+        hostname="0.0.0.0",
+        port=5000,
+        application=application,
+        use_debugger=True,
+        use_reloader=True
+    )

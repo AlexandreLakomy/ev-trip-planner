@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # 1. Installation des dépendances (au cas où le build ne l'a pas fait)
+echo "Installing requirements..."
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
@@ -14,4 +15,5 @@ sleep 5
 # 3. Lancer l'application Flask (Port 8000) au PREMIER PLAN
 # C'est ce processus que Azure va écouter.
 # Ne mettez PAS de '&' à la fin de cette ligne.
-gunicorn --bind=0.0.0.0:8000 --timeout 600 app:app
+echo "Starting Gunicorn (Flask + SOAP)..."
+gunicorn --bind=0.0.0.0:8000 app:application --timeout 600
