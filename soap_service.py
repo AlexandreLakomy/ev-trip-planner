@@ -1,3 +1,5 @@
+# soap_service.py
+
 from spyne import Application, rpc, ServiceBase, Integer, Float, Unicode
 from spyne.protocol.soap import Soap11
 from spyne.server.wsgi import WsgiApplication

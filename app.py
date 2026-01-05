@@ -563,17 +563,14 @@ def plan_trip():
 
 
 if __name__ == "__main__":
-    print("🚗 Serveur lancé sur http://0.0.0.0:5000")
-    print(f"🔋 Marge de sécurité batterie: {BATTERY_SAFETY_MARGIN * 100}%")
+    print("🚗 Serveur Flask : http://localhost:5000")
+    print("🧼 SOAP endpoint : http://localhost:5000/soap")
+    print("📄 WSDL : http://localhost:5000/soap/wsdl")
 
     application = DispatcherMiddleware(app, {
         "/soap": soap_wsgi_app
     })
 
-    run_simple(
-        hostname="0.0.0.0",
-        port=5000,
-        application=application,
-        use_debugger=True,
-        use_reloader=True
-    )
+    from werkzeug.serving import run_simple
+    run_simple("0.0.0.0", 5000, application, use_reloader=True)
+
