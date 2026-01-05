@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # 1. Installation des dépendances (au cas où le build ne l'a pas fait)
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
 # 2. Lancer le serveur SOAP (Port 8001) en arrière-plan (&)
