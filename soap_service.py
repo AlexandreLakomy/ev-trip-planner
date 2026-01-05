@@ -5,6 +5,7 @@ from spyne.protocol.soap import Soap11
 from spyne.server.wsgi import WsgiApplication
 import json
 
+# Service SOAP pour le calcul du temps de trajet d'un véhicule électrique
 class TripCalculatorService(ServiceBase):
 
     @rpc(Float, Float, Integer, _returns=Unicode)
