@@ -1,6 +1,6 @@
 #app.py
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response, request
 from flask_cors import CORS
 import requests
 import folium
@@ -8,6 +8,8 @@ from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 import os
 from dotenv import load_dotenv
+from soap_service import soap_wsgi_app
+
 
 load_dotenv()
 
@@ -27,6 +29,13 @@ if not CHARGETRIP_APP_ID:
 
 # 🔋 MARGE DE SÉCURITÉ : on ne descend pas en dessous de 10% de batterie
 BATTERY_SAFETY_MARGIN = 0.10  # 10% de réserve minimale
+
+
+@app.route("/soap", methods=["GET", "POST"])
+def soap():
+    response = soap_wsgi_app(request.environ, lambda *args: None)
+    return Response(response, content_type="text/xml")
+
 
 # ---------------------------------------------------------
 # 🔥 Utilité de formatage de temps
